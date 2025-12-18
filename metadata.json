@@ -1,5 +1,0 @@
-{
-  "name": "Class Financial Report",
-  "description": "An application to manage and track class financial transactions, including payments for various categories by students. It provides summaries, detailed transaction logs, and per-student reports.",
-  "requestFramePermissions": []
-}
