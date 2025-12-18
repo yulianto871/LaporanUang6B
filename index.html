@@ -11,7 +11,7 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- React & ReactDOM (UMD version for global access) -->
+    <!-- React & ReactDOM (UMD version) -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
@@ -19,24 +19,25 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <!-- PDF Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf-autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf-autotable.min.js"></script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s ease; }
-        .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-in { animation: fadeIn 0.4s ease-out forwards; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-full">
     <div id="root"></div>
 
+    <!-- SEMUA KODE JAVASCRIPT DI SINI -->
     <script type="text/babel">
-        // Mengamankan akses ke React dari window global
-        const { useState, useEffect, useMemo, createContext, useContext } = window.React;
+        const { useState, useEffect, useMemo } = window.React;
 
-        // --- DATA ---
+        // --- KONSTANTA DATA ---
         const STUDENT_NAMES = [
             "ABYAN ELFAHRI AZANI", "AINA CAHAYA KAMILA", "ANABELLA ZIANITA ALIYANOR AGUSTINE",
             "AVIKA AZZAHRA", "BAYU HUDA KURNIAWAN", "DAVIN PUTRA MAULANA",
@@ -47,28 +48,29 @@
             "RAKA MAHATMA HIDAYAT", "RIZKA SETIYOWATI", "TIARA AKILA AMARILYS",
             "YUMNA SHAFINA RARA DEWI", "ZAIDAN ARIQ PRADITYA RAFIQ", "ARU ZULHA AL FATIH",
             "RAHMAT RAMADHON", "GENDHIS AYU KINANTHI", "DEVI NUR KURNIAWATI"
-        ];
+        ].sort();
 
         const CATEGORIES = ["LKS", "Sumbangan", "Tabungan", "TKA"];
 
-        // --- COMPONENTS ---
-        const SummaryCard = ({ title, amount, color }) => (
-            <div className={`p-5 rounded-2xl shadow-sm border-b-4 ${color} bg-white`}>
-                <p className="text-xs font-bold text-slate-400 uppercase mb-1 tracking-tight">{title}</p>
-                <p className="text-2xl font-extrabold text-slate-800">
+        // --- KOMPONEN KECIL ---
+        const Card = ({ title, amount, colorClass, isTotal = false }) => (
+            <div className={`p-6 rounded-3xl bg-white shadow-sm border-b-4 ${colorClass} transition-all hover:shadow-md`}>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{title}</p>
+                <p className={`text-2xl font-black ${isTotal ? 'text-indigo-600' : 'text-slate-800'}`}>
                     {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount)}
                 </p>
             </div>
         );
 
+        // --- APLIKASI UTAMA ---
         const App = () => {
             const [transactions, setTransactions] = useState(() => {
-                const saved = localStorage.getItem('finance_data_6b');
+                const saved = localStorage.getItem('finance_6b_v2');
                 return saved ? JSON.parse(saved) : [];
             });
 
             useEffect(() => {
-                localStorage.setItem('finance_data_6b', JSON.stringify(transactions));
+                localStorage.setItem('finance_6b_v2', JSON.stringify(transactions));
             }, [transactions]);
 
             const summary = useMemo(() => {
@@ -81,22 +83,24 @@
                 return { totals, grand };
             }, [transactions]);
 
-            const handleSubmit = (e) => {
+            const handleAdd = (e) => {
                 e.preventDefault();
                 const form = e.target;
-                const newTx = {
+                const newEntry = {
                     id: Date.now(),
                     nama: form.nama.value,
                     kategori: form.kategori.value,
                     jumlah: parseInt(form.jumlah.value),
-                    tanggal: form.tanggal.value
+                    tanggal: form.tanggal.value,
+                    keterangan: form.keterangan.value
                 };
-                setTransactions([newTx, ...transactions]);
+                setTransactions([newEntry, ...transactions]);
                 form.reset();
+                form.tanggal.value = new Date().toISOString().split('T')[0];
             };
 
-            const deleteTx = (id) => {
-                if(confirm('Hapus transaksi ini?')) {
+            const deleteItem = (id) => {
+                if (confirm("Hapus data ini?")) {
                     setTransactions(transactions.filter(t => t.id !== id));
                 }
             };
@@ -104,124 +108,157 @@
             const exportPDF = () => {
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
-                doc.setFontSize(18);
+                
+                doc.setFontSize(20);
                 doc.text("LAPORAN KEUANGAN KELAS VI", 14, 20);
                 doc.setFontSize(10);
-                doc.text(`Total Saldo: Rp ${summary.grand.toLocaleString('id-ID')}`, 14, 28);
-                
+                doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, 14, 28);
+                doc.text(`Total Kas: Rp ${summary.grand.toLocaleString('id-ID')}`, 14, 34);
+
                 doc.autoTable({
-                    startY: 35,
+                    startY: 40,
                     head: [['No', 'Nama Siswa', 'Kategori', 'Jumlah', 'Tanggal']],
                     body: transactions.map((t, i) => [
                         i + 1, t.nama, t.kategori, `Rp ${t.jumlah.toLocaleString('id-ID')}`, t.tanggal
                     ]),
                     headStyles: { fillColor: [79, 70, 229] }
                 });
-                doc.save("Laporan_Keuangan_6B.pdf");
+
+                doc.save(`Laporan_Keuangan_6B_${Date.now()}.pdf`);
             };
 
             return (
-                <div className="max-w-5xl mx-auto p-4 py-10 md:p-10">
-                    <header className="mb-10 text-center">
-                        <h1 className="text-4xl font-black text-slate-900 tracking-tighter">KEUANGAN 6B</h1>
-                        <p className="text-slate-400 font-medium">SDN BENDAHARA KELAS - 2025</p>
+                <div className="max-w-6xl mx-auto px-4 py-10 animate-in">
+                    {/* Header */}
+                    <header className="mb-12 text-center">
+                        <div className="inline-block px-4 py-1 bg-indigo-100 text-indigo-600 rounded-full text-xs font-bold mb-4 uppercase tracking-tighter">
+                            Administrasi Kelas
+                        </div>
+                        <h1 className="text-5xl font-black text-slate-900 tracking-tighter mb-2 italic">KEUANGAN 6B</h1>
+                        <p className="text-slate-400 font-medium tracking-tight">SDN BENDAHARA - Tahun Ajaran 2025/2026</p>
                     </header>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-                        <SummaryCard title="Total Kas" amount={summary.grand} color="border-indigo-600" />
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
+                        <Card title="Total Kas" amount={summary.grand} colorClass="border-indigo-600" isTotal />
                         {CATEGORIES.map(cat => (
-                            <SummaryCard key={cat} title={cat} amount={summary.totals[cat] || 0} color="border-slate-200" />
+                            <Card key={cat} title={cat} amount={summary.totals[cat] || 0} colorClass="border-slate-200" />
                         ))}
                     </div>
 
-                    <div className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 mb-10 border border-slate-100">
-                        <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                            <span className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center text-sm">+</span>
-                            Transaksi Baru
-                        </h2>
-                        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="md:col-span-2">
-                                <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">Nama Siswa</label>
-                                <input name="nama" list="students" className="w-full bg-slate-50 border-none p-4 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="Cari nama..." required />
-                                <datalist id="students">
-                                    {STUDENT_NAMES.map(s => <option key={s} value={s} />)}
-                                </datalist>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* Form Input */}
+                        <div className="lg:col-span-1">
+                            <div className="bg-white p-8 rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-100 sticky top-10">
+                                <h2 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                                    <span className="w-2 h-6 bg-indigo-600 rounded-full"></span>
+                                    Input Data
+                                </h2>
+                                <form onSubmit={handleAdd} className="space-y-5">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Nama Siswa</label>
+                                        <input name="nama" list="std-list" className="w-full bg-slate-50 border-2 border-slate-50 p-4 rounded-2xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-bold text-slate-700" placeholder="Pilih Siswa..." required />
+                                        <datalist id="std-list">
+                                            {STUDENT_NAMES.map(s => <option key={s} value={s} />)}
+                                        </datalist>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Kategori</label>
+                                            <select name="kategori" className="w-full bg-slate-50 border-2 border-slate-50 p-4 rounded-2xl focus:bg-white focus:border-indigo-500 outline-none font-bold text-slate-700 appearance-none cursor-pointer" required>
+                                                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Tanggal</label>
+                                            <input name="tanggal" type="date" defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-slate-50 border-2 border-slate-50 p-4 rounded-2xl focus:bg-white focus:border-indigo-500 outline-none font-bold text-slate-700" required />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Jumlah Pembayaran</label>
+                                        <input name="jumlah" type="number" className="w-full bg-slate-50 border-2 border-slate-50 p-4 rounded-2xl focus:bg-white focus:border-indigo-500 outline-none font-black text-2xl text-slate-800" placeholder="Rp 0" required />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Keterangan (Opsional)</label>
+                                        <input name="keterangan" className="w-full bg-slate-50 border-2 border-slate-50 p-4 rounded-2xl focus:bg-white focus:border-indigo-500 outline-none font-medium text-slate-600" placeholder="Catatan tambahan..." />
+                                    </div>
+                                    <button type="submit" className="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 active:scale-95 transition-all uppercase tracking-widest text-sm">
+                                        Simpan Data
+                                    </button>
+                                </form>
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">Kategori</label>
-                                <select name="kategori" className="w-full bg-slate-50 border-none p-4 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none appearance-none" required>
-                                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">Jumlah (Rp)</label>
-                                <input name="jumlah" type="number" className="w-full bg-slate-50 border-none p-4 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0" required />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">Tanggal</label>
-                                <input name="tanggal" type="date" defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-slate-50 border-none p-4 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" required />
-                            </div>
-                            <div className="flex items-end">
-                                <button type="submit" className="w-full bg-indigo-600 text-white font-bold p-4 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all">
-                                    Simpan
+                        </div>
+
+                        {/* List Transaksi */}
+                        <div className="lg:col-span-2 space-y-6">
+                            <div className="flex justify-between items-center px-2">
+                                <h2 className="text-2xl font-black text-slate-800 tracking-tighter">Riwayat Pembayaran</h2>
+                                <button onClick={exportPDF} className="bg-emerald-500 text-white px-6 py-2 rounded-full font-black text-xs hover:bg-emerald-600 transition-all shadow-md active:scale-95 uppercase tracking-widest">
+                                    Unduh PDF
                                 </button>
                             </div>
-                        </form>
-                    </div>
 
-                    <div className="flex justify-between items-end mb-6">
-                        <h2 className="text-2xl font-black text-slate-800 tracking-tight">Riwayat</h2>
-                        <button onClick={exportPDF} className="bg-emerald-500 text-white px-6 py-2 rounded-full font-bold text-sm hover:bg-emerald-600 transition-all">
-                            Cetak PDF
-                        </button>
+                            <div className="bg-white rounded-[40px] shadow-sm border border-slate-100 overflow-hidden">
+                                <div className="overflow-x-auto custom-scrollbar">
+                                    <table className="w-full text-left">
+                                        <thead className="bg-slate-50/50">
+                                            <tr className="text-slate-400">
+                                                <th className="p-6 text-[10px] font-black uppercase tracking-widest">Informasi Siswa</th>
+                                                <th className="p-6 text-[10px] font-black uppercase tracking-widest">Kategori</th>
+                                                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-right">Jumlah</th>
+                                                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-center">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            {transactions.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan="4" className="p-20 text-center">
+                                                        <p className="text-slate-300 font-bold italic">Belum ada transaksi yang tercatat.</p>
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                transactions.map(t => (
+                                                    <tr key={t.id} className="hover:bg-indigo-50/30 transition-colors group">
+                                                        <td className="p-6">
+                                                            <p className="font-bold text-slate-800 leading-none mb-1">{t.nama}</p>
+                                                            <p className="text-[10px] text-slate-400 font-medium tracking-tighter uppercase">{t.tanggal}</p>
+                                                            {t.keterangan && <p className="text-[10px] text-indigo-400 mt-1 italic italic">Note: {t.keterangan}</p>}
+                                                        </td>
+                                                        <td className="p-6">
+                                                            <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight">
+                                                                {t.kategori}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-6 text-right">
+                                                            <p className="font-black text-slate-900">
+                                                                Rp {t.jumlah.toLocaleString('id-ID')}
+                                                            </p>
+                                                        </td>
+                                                        <td className="p-6 text-center">
+                                                            <button onClick={() => deleteItem(t.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                </svg>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-
-                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-slate-50/50 text-slate-400">
-                                    <th className="p-5 text-xs font-bold uppercase tracking-wider">Siswa</th>
-                                    <th className="p-5 text-xs font-bold uppercase tracking-wider">Kategori</th>
-                                    <th className="p-5 text-xs font-bold uppercase tracking-wider text-right">Jumlah</th>
-                                    <th className="p-5 text-xs font-bold uppercase tracking-wider text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {transactions.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="4" className="p-20 text-center text-slate-300 font-medium">Belum ada transaksi</td>
-                                    </tr>
-                                ) : (
-                                    transactions.map(t => (
-                                        <tr key={t.id} className="group hover:bg-indigo-50/30 transition-colors">
-                                            <td className="p-5">
-                                                <p className="font-bold text-slate-700">{t.nama}</p>
-                                                <p className="text-[10px] text-slate-400 font-medium tracking-widest">{t.tanggal}</p>
-                                            </td>
-                                            <td className="p-5">
-                                                <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase">{t.kategori}</span>
-                                            </td>
-                                            <td className="p-5 text-right font-black text-slate-900">
-                                                Rp {t.jumlah.toLocaleString('id-ID')}
-                                            </td>
-                                            <td className="p-5 text-center">
-                                                <button onClick={() => deleteTx(t.id)} className="text-slate-300 hover:text-red-500 transition-colors">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mx-auto" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                    </svg>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                    
+                    <footer className="mt-20 text-center pb-10">
+                        <p className="text-slate-300 text-[10px] font-bold uppercase tracking-[0.3em]">Bendahara Kelas VI - SDN Bendahara</p>
+                    </footer>
                 </div>
             );
         };
 
-        // Render aplikasi setelah DOM siap
+        // Render aplikasi
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
